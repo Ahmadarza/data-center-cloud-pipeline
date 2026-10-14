@@ -394,6 +394,7 @@
 
             display: -webkit-box;
             -webkit-line-clamp: 4;
+            line-clamp: 4;
             -webkit-box-orient: vertical;
 
             overflow: hidden;
@@ -546,4 +547,185 @@
     outline: none;
     cursor: pointer;
     padding: 0;
+}
+
+
+/* ==========================================
+   SUBTOPIC ANALYSIS
+========================================== */
+
+.subtopic-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.subtopic-item {
+    padding: 16px 18px;
+    background: #f8f8f8;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    transition: background 0.2s ease;
+}
+
+.subtopic-item:hover {
+    background: #f1f6fb;
+}
+
+.subtopic-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 10px;
+}
+
+.subtopic-item-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111;
+    line-height: 1.5;
+}
+
+.subtopic-item-meta {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.subtopic-item-count {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111;
+}
+
+.subtopic-item-percent {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #777;
+}
+
+.subtopic-progress {
+    width: 100%;
+    height: 9px;
+    overflow: hidden;
+    background: #e5e5e5;
+    border-radius: 20px;
+}
+
+.subtopic-progress-bar {
+    height: 100%;
+    background: #329ef4;
+    border-radius: 20px;
+    transition: width 0.4s ease;
+}
+
+.subtopic-item-description {
+    margin-top: 10px;
+    color: #666;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.subtopic-summary {
+    margin-bottom: 20px;
+    padding: 15px 18px;
+    background: #111;
+    color: #fff;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.subtopic-summary strong {
+    color: #fff;
+}
+
+@media (max-width: 600px) {
+    .subtopic-item-header {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .subtopic-item-meta {
+        text-align: left;
+    }
+}
+
+
+/* ==========================================
+   NEWS PAGINATION
+========================================== */
+
+.news-pagination {
+    width: 100%;
+    margin: 28px 0 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.pagination-info {
+    margin: 0;
+    color: #666;
+    font-size: 13px;
+    text-align: center;
+}
+
+.pagination-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.pagination-controls button {
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+
+    border: 1px solid #dedede;
+    border-radius: 8px;
+
+    background: #ffffff;
+    color: #222222;
+
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pagination-controls button:hover:not(:disabled) {
+    border-color: #111111;
+    background: #f3f3f3;
+}
+
+.pagination-controls button.active {
+    background: #111111;
+    color: #ffffff;
+    border-color: #111111;
+}
+
+.pagination-controls button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+    .pagination-controls {
+        gap: 5px;
+    }
+
+    .pagination-controls button {
+        min-width: 34px;
+        height: 34px;
+        padding: 0 8px;
+        font-size: 12px;
+    }
 }

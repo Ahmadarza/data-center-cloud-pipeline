@@ -5,6 +5,14 @@
 let currentSource = "ALL";
 let newsTrendChart = null;
 
+// ==========================================
+// NEWS PAGINATION
+// ==========================================
+
+let allNews = [];
+let currentNewsPage = 1;
+const newsPerPage = 40;
+
 function sourceQuery() {
     return `?source=${encodeURIComponent(currentSource)}`;
 }
@@ -291,7 +299,6 @@ async function loadInsights() {
         }
 
         const data = await response.json();
-
 
         /* ==========================================
            BUSINESS INSIGHT INTERPRETATION
@@ -740,6 +747,135 @@ async function loadInsights() {
 
 
 /* ==========================================
+   LOAD SUBTOPIC ANALYSIS
+========================================== */
+
+async function loadSubtopics() {
+    const container = document.getElementById("subtopicList");
+
+    if (!container) return;
+
+    container.className = "data-list subtopic-list";
+    container.innerHTML = `
+        <div class="loading">Memuat data subtopic...</div>
+    `;
+
+    const descriptions = {
+        "Infrastruktur Data Center":
+            "Membahas fasilitas fisik pusat data, pembangunan, dan pengembangan infrastruktur.",
+        "Infrastruktur AI":
+            "Membahas infrastruktur komputasi AI, GPU, dan kebutuhan pusat data untuk beban kerja AI.",
+        "Investasi dan Pendanaan":
+            "Membahas investasi, investor, pendanaan, dan modal proyek pusat data.",
+        "Kebutuhan Energi":
+            "Membahas pasokan listrik, kebutuhan daya, dan energi untuk operasional pusat data.",
+        "Regulasi dan Perizinan":
+            "Membahas regulasi pemerintah, kebijakan, serta perizinan proyek pusat data.",
+        "Teknologi Pendinginan":
+            "Membahas sistem pendinginan dan teknologi pengelolaan panas pusat data.",
+        "Transfer Teknologi":
+            "Membahas alih teknologi, peningkatan kompetensi, dan pengembangan tenaga kerja lokal.",
+        "Konektivitas Digital":
+            "Membahas konektivitas jaringan dan infrastruktur telekomunikasi.",
+        "Cloud Computing":
+            "Membahas layanan komputasi awan dan penyedia layanan cloud.",
+        "Lainnya":
+            "Artikel yang belum masuk ke kategori subtopic spesifik berdasarkan aturan klasifikasi."
+    };
+
+    try {
+        const response = await fetch(
+            `/api/subtopics${sourceQuery()}`
+        );
+
+        if (!response.ok) {
+            throw new Error("Gagal mengambil data subtopic");
+        }
+
+        const data = await response.json();
+
+        if (!data.length) {
+            container.textContent = "Belum ada data subtopic.";
+            return;
+        }
+
+        const total = data.reduce(
+            (sum, item) => sum + Number(item.total),
+            0
+        );
+
+        const top = data[0];
+        container.innerHTML = "";
+
+        const summary = document.createElement("div");
+        summary.className = "subtopic-summary";
+        summary.textContent =
+            `Subtopic terbanyak adalah ${top.subtopic}, ` +
+            `dengan ${top.total} artikel (${(top.total / total * 100).toFixed(1)}% ` +
+            `dari ${total} artikel pada filter saat ini).`;
+
+        container.appendChild(summary);
+
+        data.forEach(item => {
+            const count = Number(item.total);
+            const percent = total ? count / total * 100 : 0;
+
+            const card = document.createElement("div");
+            card.className = "subtopic-item";
+
+            const header = document.createElement("div");
+            header.className = "subtopic-item-header";
+
+            const name = document.createElement("div");
+            name.className = "subtopic-item-name";
+            name.textContent = item.subtopic;
+
+            const meta = document.createElement("div");
+            meta.className = "subtopic-item-meta";
+
+            const countLabel = document.createElement("span");
+            countLabel.className = "subtopic-item-count";
+            countLabel.textContent =
+                `${count.toLocaleString("id-ID")} artikel`;
+
+            const percentLabel = document.createElement("span");
+            percentLabel.className = "subtopic-item-percent";
+            percentLabel.textContent = `${percent.toFixed(1)}%`;
+
+            meta.appendChild(countLabel);
+            meta.appendChild(percentLabel);
+            header.appendChild(name);
+            header.appendChild(meta);
+
+            const progress = document.createElement("div");
+            progress.className = "subtopic-progress";
+
+            const bar = document.createElement("div");
+            bar.className = "subtopic-progress-bar";
+            bar.style.width = `${percent}%`;
+
+            progress.appendChild(bar);
+
+            const description = document.createElement("p");
+            description.className = "subtopic-item-description";
+            description.textContent =
+                descriptions[item.subtopic] ||
+                "Kategori subtopic berdasarkan hasil klasifikasi artikel.";
+
+            card.appendChild(header);
+            card.appendChild(progress);
+            card.appendChild(description);
+            container.appendChild(card);
+        });
+
+    } catch (error) {
+        console.error("Subtopic error:", error);
+        container.textContent = "Gagal memuat data subtopic.";
+    }
+}
+
+
+/* ==========================================
    FORMAT DATE
 ========================================== */
 
@@ -832,16 +968,17 @@ function createNewsInsightTags(news) {
 }
 
 
+
 /* ==========================================
    LOAD NEWS
 ========================================== */
 
-async function loadNews() {
+async function loadNews(resetPage = false) {
 
     const container =
-        document.getElementById(
-            "newsContainer"
-        );
+        document.getElementById("newsContainer");
+
+    if (!container) return;
 
     try {
 
@@ -850,20 +987,40 @@ async function loadNews() {
         );
 
         if (!response.ok) {
-
-            throw new Error(
-                "Gagal mengambil berita"
-            );
-
+            throw new Error("Gagal mengambil berita");
         }
 
-        const newsList =
-            await response.json();
+        const newsList = await response.json();
+
+        // Simpan semua berita dari API
+        allNews = newsList;
+
+        // Reset ke halaman pertama hanya jika diperlukan
+        if (resetPage) {
+            currentNewsPage = 1;
+        }
+
+        // Pastikan nomor halaman masih valid
+        const totalPages =
+            Math.ceil(allNews.length / newsPerPage);
+
+        if (totalPages === 0) {
+            currentNewsPage = 1;
+        } else if (currentNewsPage > totalPages) {
+            currentNewsPage = totalPages;
+        }
 
         container.innerHTML = "";
 
+        const oldPagination =
+            document.getElementById("newsPagination");
 
-        if (newsList.length === 0) {
+        if (oldPagination) {
+            oldPagination.remove();
+        }
+
+        // Tidak ada berita
+        if (allNews.length === 0) {
 
             container.innerHTML = `
                 <div class="loading">
@@ -872,365 +1029,321 @@ async function loadNews() {
             `;
 
             return;
-
         }
 
+        // Ambil berita sesuai halaman aktif
+        const startIndex =
+            (currentNewsPage - 1) * newsPerPage;
 
-        newsList.forEach(
-            news => {
+        const endIndex =
+            startIndex + newsPerPage;
 
-                const card =
-                    document.createElement(
-                        "article"
-                    );
+        const paginatedNews =
+            allNews.slice(startIndex, endIndex);
 
-                card.className =
-                    "news-card";
+        paginatedNews.forEach(news => {
 
+            const card =
+                document.createElement("article");
 
-                /* ==========================
-                   IMAGE
-                ========================== */
+            card.className = "news-card";
 
-                const image =
-                    document.createElement(
-                        "img"
-                    );
+            // IMAGE
+            const image =
+                document.createElement("img");
 
-                image.className =
-                    "news-image";
+            image.className = "news-image";
+            image.alt = news.title || "Berita Data Center";
 
-                image.alt =
-                    news.title;
+            image.src = news.image_url ||
+                "https://via.placeholder.com/800x450?text=Data+Center";
 
+            image.onerror = () => {
+                image.onerror = null;
+                image.src =
+                    "https://via.placeholder.com/800x450?text=Data+Center";
+            };
 
-                if (news.image_url) {
+            // BODY
+            const body =
+                document.createElement("div");
 
-                    image.src =
-                        news.image_url;
+            body.className = "news-body";
 
-                }
+            // META
+            const meta =
+                document.createElement("div");
 
-                else {
+            meta.className = "news-meta";
 
-                    image.src =
-                        "https://via.placeholder.com/800x450?text=Data+Center";
+            const date =
+                document.createElement("span");
 
-                }
+            date.className = "date";
+            date.textContent =
+                formatDate(news.published_date);
 
+            meta.appendChild(date);
 
-                /* ==========================
-                   BODY
-                ========================== */
+            // SOURCE
+            if (news.source) {
 
-                const body =
-                    document.createElement(
-                        "div"
-                    );
+                const sourceTag =
+                    document.createElement("span");
 
-                body.className =
-                    "news-body";
+                sourceTag.className = "tag";
+                sourceTag.textContent = news.source;
 
-
-                /* ==========================
-                   META
-                ========================== */
-
-                const meta =
-                    document.createElement(
-                        "div"
-                    );
-
-                meta.className =
-                    "news-meta";
-
-
-                const date =
-                    document.createElement(
-                        "span"
-                    );
-
-                date.className =
-                    "date";
-
-                date.textContent =
-                    formatDate(
-                        news.published_date
-                    );
-
-                meta.appendChild(
-                    date
-                );
-
-
-                /* SOURCE */
-
-                if (news.source) {
-
-                    const sourceTag =
-                        document.createElement(
-                            "span"
-                        );
-
-                    sourceTag.className =
-                        "tag";
-
-                    sourceTag.textContent =
-                        news.source;
-
-                    meta.appendChild(
-                        sourceTag
-                    );
-
-                }
-
-
-                /* TOPIC */
-
-                if (news.topic) {
-
-                    const tag =
-                        document.createElement(
-                            "span"
-                        );
-
-                    tag.className =
-                        "tag";
-
-                    tag.textContent =
-                        news.topic;
-
-                    meta.appendChild(
-                        tag
-                    );
-
-                }
-
-
-                /* ==========================
-                   TITLE
-                ========================== */
-
-                const title =
-                    document.createElement(
-                        "h3"
-                    );
-
-                title.className =
-                    "news-title";
-
-                title.textContent =
-                    news.title;
-
-
-                /* ==========================
-                   SUMMARY
-                ========================== */
-
-                const summary =
-                    document.createElement(
-                        "p"
-                    );
-
-                summary.className =
-                    "news-summary";
-
-                summary.textContent =
-                    news.summary ||
-                    (
-                        news.content
-                            ? news.content.substring(0, 250) + "..."
-                            : "Tidak ada ringkasan tersedia."
-                    );
-
-
-                /* ==========================
-                   BUSINESS INSIGHT
-                ========================== */
-
-                const insight =
-                    document.createElement(
-                        "div"
-                    );
-
-                insight.className =
-                    "business-insight";
-
-
-                const insightTitle =
-                    document.createElement(
-                        "div"
-                    );
-
-                insightTitle.className =
-                    "business-insight-title";
-
-                insightTitle.textContent =
-                    "EXTRACTED INFORMATION";
-
-
-                const insightTags =
-                    document.createElement(
-                        "div"
-                    );
-
-                insightTags.className =
-                    "insight-tags";
-
-
-                const tags =
-                    createNewsInsightTags(
-                        news
-                    );
-
-
-                if (tags.length === 0) {
-
-                    const empty =
-                        document.createElement(
-                            "span"
-                        );
-
-                    empty.className =
-                        "insight-tag";
-
-                    empty.textContent =
-                        "Belum ada informasi tambahan";
-
-                    insightTags.appendChild(
-                        empty
-                    );
-
-                }
-
-                else {
-
-                    tags.forEach(
-                        tag => {
-
-                            const element =
-                                document.createElement(
-                                    "span"
-                                );
-
-                            element.className =
-                                "insight-tag";
-
-                            element.textContent =
-                                tag;
-
-                            insightTags.appendChild(
-                                element
-                            );
-
-                        }
-                    );
-
-                }
-
-
-                insight.appendChild(
-                    insightTitle
-                );
-
-                insight.appendChild(
-                    insightTags
-                );
-
-
-                /* ==========================
-                   READ MORE
-                ========================== */
-
-                const link =
-                    document.createElement(
-                        "a"
-                    );
-
-                link.className =
-                    "read-more";
-
-                link.textContent =
-                    "Baca Selengkapnya →";
-
-                link.href =
-                    news.article_url;
-
-                link.target =
-                    "_blank";
-
-                link.rel =
-                    "noopener noreferrer";
-
-
-                /* ==========================
-                   ASSEMBLE CARD
-                ========================== */
-
-                body.appendChild(
-                    meta
-                );
-
-                body.appendChild(
-                    title
-                );
-
-                body.appendChild(
-                    summary
-                );
-
-                body.appendChild(
-                    insight
-                );
-
-                body.appendChild(
-                    link
-                );
-
-
-                card.appendChild(
-                    image
-                );
-
-                card.appendChild(
-                    body
-                );
-
-
-                container.appendChild(
-                    card
-                );
-
+                meta.appendChild(sourceTag);
             }
-        );
 
-    }
+            // TOPIC
+            if (news.topic) {
 
-    catch (error) {
+                const tag =
+                    document.createElement("span");
 
-        console.error(
-            "News error:",
-            error
-        );
+                tag.className = "tag";
+                tag.textContent = news.topic;
+
+                meta.appendChild(tag);
+            }
+
+            // TITLE
+            const title =
+                document.createElement("h3");
+
+            title.className = "news-title";
+            title.textContent = news.title || "Tanpa judul";
+
+            // SUMMARY
+            const summary =
+                document.createElement("p");
+
+            summary.className = "news-summary";
+
+            summary.textContent =
+                news.summary ||
+                (
+                    news.content
+                        ? news.content.substring(0, 250) + "..."
+                        : "Tidak ada ringkasan tersedia."
+                );
+
+            // BUSINESS INSIGHT
+            const insight =
+                document.createElement("div");
+
+            insight.className = "business-insight";
+
+            const insightTitle =
+                document.createElement("div");
+
+            insightTitle.className = "business-insight-title";
+            insightTitle.textContent = "EXTRACTED INFORMATION";
+
+            const insightTags =
+                document.createElement("div");
+
+            insightTags.className = "insight-tags";
+
+            const tags =
+                createNewsInsightTags(news);
+
+            if (tags.length === 0) {
+
+                const empty =
+                    document.createElement("span");
+
+                empty.className = "insight-tag";
+                empty.textContent =
+                    "Belum ada informasi tambahan";
+
+                insightTags.appendChild(empty);
+
+            } else {
+
+                tags.forEach(tag => {
+
+                    const element =
+                        document.createElement("span");
+
+                    element.className = "insight-tag";
+                    element.textContent = tag;
+
+                    insightTags.appendChild(element);
+
+                });
+            }
+
+            insight.appendChild(insightTitle);
+            insight.appendChild(insightTags);
+
+            // READ MORE
+            const link =
+                document.createElement("a");
+
+            link.className = "read-more";
+            link.textContent = "Baca Selengkapnya →";
+            link.href = news.article_url || "#";
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+
+            if (!news.article_url) {
+                link.style.display = "none";
+            }
+
+            // ASSEMBLE CARD
+            body.appendChild(meta);
+            body.appendChild(title);
+            body.appendChild(summary);
+            body.appendChild(insight);
+            body.appendChild(link);
+
+            card.appendChild(image);
+            card.appendChild(body);
+
+            container.appendChild(card);
+
+        });
+
+        // Buat tombol pagination di bawah kartu
+        renderNewsPagination();
+
+    } catch (error) {
+
+        console.error("News error:", error);
 
         container.innerHTML = `
-
             <div class="loading">
-
                 Gagal memuat berita.
-
                 <br><br>
-
                 Pastikan Flask dan PostgreSQL
                 sedang berjalan.
-
             </div>
-
         `;
 
-    }
+        const oldPagination =
+            document.getElementById("newsPagination");
 
+        if (oldPagination) {
+            oldPagination.remove();
+        }
+
+    }
 }
+
+   
+    /* ==========================================
+    NEWS PAGINATION CONTROLS
+    ========================================== */
+
+    function renderNewsPagination() {
+        const container =
+            document.getElementById("newsContainer");
+
+        if (!container) return;
+
+        // Hapus navigasi sebelumnya
+        const oldPagination =
+            document.getElementById("newsPagination");
+
+        if (oldPagination) {
+            oldPagination.remove();
+        }
+
+        const totalPages =
+            Math.ceil(allNews.length / newsPerPage);
+
+        if (totalPages <= 1) return;
+
+        const pagination =
+            document.createElement("div");
+
+        pagination.id = "newsPagination";
+        pagination.className = "news-pagination";
+
+        const startNumber =
+            (currentNewsPage - 1) * newsPerPage + 1;
+
+        const endNumber =
+            Math.min(
+                currentNewsPage * newsPerPage,
+                allNews.length
+            );
+
+        const info =
+            document.createElement("p");
+
+        info.className = "pagination-info";
+        info.textContent =
+            `Menampilkan ${startNumber}–${endNumber} dari ${allNews.length} artikel`;
+
+        pagination.appendChild(info);
+
+        const controls =
+            document.createElement("div");
+
+        controls.className = "pagination-controls";
+
+        // Sebelumnya
+        const previousButton =
+            document.createElement("button");
+
+        previousButton.type = "button";
+        previousButton.textContent = "‹ Sebelumnya";
+        previousButton.disabled = currentNewsPage === 1;
+
+        previousButton.addEventListener("click", () => {
+            if (currentNewsPage > 1) {
+                currentNewsPage--;
+                loadNews();
+            }
+        });
+
+        controls.appendChild(previousButton);
+
+        // Nomor halaman
+        for (let page = 1; page <= totalPages; page++) {
+            const pageButton =
+                document.createElement("button");
+
+            pageButton.type = "button";
+            pageButton.textContent = page;
+
+            if (page === currentNewsPage) {
+                pageButton.classList.add("active");
+                pageButton.setAttribute("aria-current", "page");
+            }
+
+            pageButton.addEventListener("click", () => {
+                currentNewsPage = page;
+                loadNews();
+            });
+
+            controls.appendChild(pageButton);
+        }
+
+        // Berikutnya
+        const nextButton =
+            document.createElement("button");
+
+        nextButton.type = "button";
+        nextButton.textContent = "Berikutnya ›";
+        nextButton.disabled = currentNewsPage === totalPages;
+
+        nextButton.addEventListener("click", () => {
+            if (currentNewsPage < totalPages) {
+                currentNewsPage++;
+                loadNews();
+            }
+        });
+
+        controls.appendChild(nextButton);
+        pagination.appendChild(controls);
+
+        container.insertAdjacentElement("afterend", pagination);
+    }
 
     /* ==========================================
     LOAD AI EXECUTIVE SUMMARY
@@ -1368,6 +1481,8 @@ async function loadDashboard() {
 
         loadInsights(),
 
+        loadSubtopics(),
+
         loadNews(),
 
         loadAISummary()
@@ -1395,7 +1510,8 @@ document.addEventListener(
 
                     currentSource =
                         event.target.value;
-
+                        
+                    currentNewsPage = 1;
                     await loadDashboard();
 
                 }
