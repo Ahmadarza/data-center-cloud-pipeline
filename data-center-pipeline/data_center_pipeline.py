@@ -1,3 +1,4 @@
+
 from datetime import datetime
 from airflow import DAG
 from airflow.operators.bash import BashOperator
@@ -11,7 +12,7 @@ with DAG(
     start_date=datetime(2026, 9, 21),
     schedule_interval="@weekly",
     catchup=False,
-    tags=["data-center", "multi-source"],
+    tags=["data-center", "multi-source", "subtopic"],
 ) as dag:
 
     # ==========================================
@@ -22,32 +23,33 @@ with DAG(
         task_id="scrape_antaranews",
         bash_command=f"cd {PIPELINE_DIR} && python antaranews_scraping.py",
     )
-
     content_antara = BashOperator(
         task_id="content_antaranews",
         bash_command=f"cd {PIPELINE_DIR} && python antaranews_article_scraping.py",
     )
-
     clean_antara = BashOperator(
         task_id="clean_antaranews",
         bash_command=f"cd {PIPELINE_DIR} && python clean_filter_antaranews.py",
     )
-
     filter_antara = BashOperator(
         task_id="filter_current_antaranews",
         bash_command=f"cd {PIPELINE_DIR} && python filter_current_antaranews.py",
     )
-
     insight_antara = BashOperator(
         task_id="insight_antaranews",
         bash_command=f"cd {PIPELINE_DIR} && python extract_business_insight.py",
     )
-
+    classify_antara = BashOperator(
+        task_id="classify_subtopic_antaranews",
+        bash_command=(
+            f"cd {PIPELINE_DIR} && "
+            "python classify_subtopic_pipeline.py antaranews"
+        ),
+    )
     load_antara = BashOperator(
         task_id="load_antaranews",
         bash_command=f"cd {PIPELINE_DIR} && python load_postgresql.py",
     )
-
 
     # ==========================================
     # KATADATA
@@ -57,70 +59,110 @@ with DAG(
         task_id="scrape_katadata",
         bash_command=f"cd {PIPELINE_DIR} && python katadata_scraping.py",
     )
-
     content_katadata = BashOperator(
         task_id="content_katadata",
         bash_command=f"cd {PIPELINE_DIR} && python katadata_article_scraping.py",
     )
-
     clean_katadata = BashOperator(
         task_id="clean_katadata",
         bash_command=f"cd {PIPELINE_DIR} && python clean_filter_katadata.py",
     )
-
     filter_katadata = BashOperator(
         task_id="filter_current_katadata",
         bash_command=f"cd {PIPELINE_DIR} && python filter_current_katadata.py",
     )
-
     insight_katadata = BashOperator(
         task_id="insight_katadata",
-        bash_command=f"cd {PIPELINE_DIR} && python extract_business_insight_katadata.py",
+        bash_command=(
+            f"cd {PIPELINE_DIR} && "
+            "python extract_business_insight_katadata.py"
+        ),
     )
-
+    classify_katadata = BashOperator(
+        task_id="classify_subtopic_katadata",
+        bash_command=(
+            f"cd {PIPELINE_DIR} && "
+            "python classify_subtopic_pipeline.py katadata"
+        ),
+    )
     load_katadata = BashOperator(
         task_id="load_katadata",
-        bash_command=f"cd {PIPELINE_DIR} && python load_katadata_postgresql.py",
+        bash_command=(
+            f"cd {PIPELINE_DIR} && python load_katadata_postgresql.py"
+        ),
     )
 
-# ==========================================
-# KOMPAS
-# ==========================================
+    # ==========================================
+    # KOMPAS
+    # ==========================================
 
-scrape_kompas = BashOperator(
-    task_id="scrape_kompas",
-    bash_command=f"cd {PIPELINE_DIR} && python kompas_scraping.py",
-)
+    scrape_kompas = BashOperator(
+        task_id="scrape_kompas",
+        bash_command=f"cd {PIPELINE_DIR} && python kompas_scraping.py",
+    )
+    clean_kompas = BashOperator(
+        task_id="clean_kompas",
+        bash_command=f"cd {PIPELINE_DIR} && python clean_filter_kompas.py",
+    )
+    filter_kompas = BashOperator(
+        task_id="filter_current_kompas",
+        bash_command=f"cd {PIPELINE_DIR} && python filter_current_kompas.py",
+    )
+    insight_kompas = BashOperator(
+        task_id="insight_kompas",
+        bash_command=(
+            f"cd {PIPELINE_DIR} && python extract_business_insight_kompas.py"
+        ),
+    )
+    classify_kompas = BashOperator(
+        task_id="classify_subtopic_kompas",
+        bash_command=(
+            f"cd {PIPELINE_DIR} && "
+            "python classify_subtopic_pipeline.py kompas"
+        ),
+    )
+    load_kompas = BashOperator(
+        task_id="load_kompas",
+        bash_command=f"cd {PIPELINE_DIR} && python load_kompas_postgresql.py",
+    )
 
-clean_kompas = BashOperator(
-    task_id="clean_kompas",
-    bash_command=f"cd {PIPELINE_DIR} && python clean_filter_kompas.py",
-)
+    # ==========================================
+    # DEPENDENCY ANTARA
+    # ==========================================
 
-filter_kompas = BashOperator(
-    task_id="filter_current_kompas",
-    bash_command=f"cd {PIPELINE_DIR} && python filter_current_kompas.py",
-)
+    (
+        scrape_antara
+        >> content_antara
+        >> clean_antara
+        >> filter_antara
+        >> insight_antara
+        >> classify_antara
+        >> load_antara
+    )
 
-insight_kompas = BashOperator(
-    task_id="insight_kompas",
-    bash_command=f"cd {PIPELINE_DIR} && python extract_business_insight_kompas.py",
-)
+    # ==========================================
+    # DEPENDENCY KATADATA
+    # ==========================================
 
-load_kompas = BashOperator(
-    task_id="load_kompas",
-    bash_command=f"cd {PIPELINE_DIR} && python load_kompas_postgresql.py",
-)
+    (
+        scrape_katadata
+        >> content_katadata
+        >> clean_katadata
+        >> filter_katadata
+        >> insight_katadata
+        >> classify_katadata
+        >> load_katadata
+    )
 
+    # ==========================================
+    # DEPENDENCY KOMPAS
+    # ==========================================
 
-# ==========================================
-# DEPENDENCY KOMPAS
-# ==========================================
-
-(
-    scrape_kompas
-    >> clean_kompas
-    >> filter_kompas
-    >> insight_kompas
-    >> load_kompas
-)
+    (
+        scrape_kompas
+        >> clean_kompas
+        >> filter_kompas
+        >> insight_kompas
+        >> classify_kompas
+        >> load_kompas
+    )
