@@ -59,199 +59,130 @@ async function loadSummary() {
 
 
 /* ==========================================
-   LOAD NEWS TREND
+   LOAD MONTHLY NEWS TREND
 ========================================== */
 
 async function loadNewsTrend() {
-
     try {
-
         const response = await fetch(
             `/api/trends${sourceQuery()}`
         );
 
         if (!response.ok) {
-            throw new Error(
-                "Gagal mengambil data trend"
-            );
+            throw new Error("Gagal mengambil data trend");
         }
 
         const data = await response.json();
 
+        // Format label bulan, contoh: Okt 2025
+        const formatMonth = (monthString) => {
+            const [year, month] = monthString.split("-").map(Number);
+
+            return new Date(year, month - 1, 1)
+                .toLocaleDateString("id-ID", {
+                    month: "short",
+                    year: "numeric"
+                });
+        };
+
         // Trend Insight
-        const trendInsight =
-            document.getElementById(
-                "trendInsight"
-            );
+        const trendInsight = document.getElementById("trendInsight");
 
         if (trendInsight && data.length > 0) {
+            const highestMonth = data.reduce(
+                (max, item) =>
+                    item.total > max.total ? item : max,
+                data[0]
+            );
 
-            const highestWeek =
-                data.reduce(
-                    (max, item) =>
-                        item.total > max.total
-                            ? item
-                            : max,
-                    data[0]
-                );
-
-            const highestIndex =
-                data.findIndex(
-                    item =>
-                        item.week === highestWeek.week
-                );
+            const highestIndex = data.findIndex(
+                item => item.month === highestMonth.month
+            );
 
             let insightText =
-                `Minggu dengan jumlah pemberitaan tertinggi adalah ` +
-                `<strong>${highestWeek.week}</strong> ` +
-                `dengan <strong>${highestWeek.total} artikel</strong>.`;
+                `Bulan dengan jumlah pemberitaan tertinggi adalah ` +
+                `<strong>${formatMonth(highestMonth.month)}</strong> ` +
+                `dengan <strong>${highestMonth.total} artikel</strong>.`;
 
             if (highestIndex > 0) {
-
-                const previousWeek =
-                    data[highestIndex - 1];
-
+                const previousMonth = data[highestIndex - 1];
                 const difference =
-                    highestWeek.total -
-                    previousWeek.total;
+                    highestMonth.total - previousMonth.total;
 
                 if (difference > 0) {
-
                     insightText +=
                         ` Jumlah tersebut meningkat ` +
                         `<strong>${difference} artikel</strong> ` +
-                        `dibandingkan minggu sebelumnya ` +
-                        `(${previousWeek.week}).`;
-
-                }
-
-                else if (difference < 0) {
-
+                        `dibandingkan bulan sebelumnya ` +
+                        `(${formatMonth(previousMonth.month)}).`;
+                } else if (difference < 0) {
                     insightText +=
                         ` Jumlah tersebut menurun ` +
                         `<strong>${Math.abs(difference)} artikel</strong> ` +
-                        `dibandingkan minggu sebelumnya ` +
-                        `(${previousWeek.week}).`;
-
-                }
-
-                else {
-
+                        `dibandingkan bulan sebelumnya ` +
+                        `(${formatMonth(previousMonth.month)}).`;
+                } else {
                     insightText +=
-                        ` Jumlah tersebut sama dengan ` +
-                        `minggu sebelumnya.`;
-
+                        ` Jumlah tersebut sama dengan bulan sebelumnya.`;
                 }
-
             }
 
             trendInsight.innerHTML =
                 `<strong>Trend Insight:</strong> ${insightText}`;
-
-        }
-
-        else if (trendInsight) {
-
+        } else if (trendInsight) {
             trendInsight.textContent =
                 "Belum tersedia data trend.";
-
         }
 
         const labels = data.map(
-            item => item.week
+            item => formatMonth(item.month)
         );
 
         const values = data.map(
             item => item.total
         );
 
-        const canvas = document.getElementById(
-            "newsTrendChart"
-        );
+        const canvas = document.getElementById("newsTrendChart");
 
         if (newsTrendChart) {
             newsTrendChart.destroy();
         }
 
         newsTrendChart = new Chart(canvas, {
-
             type: "line",
-
             data: {
-
                 labels: labels,
-
-                datasets: [
-
-                    {
-
-                        label: "Jumlah Artikel",
-
-                        data: values,
-
-                        borderWidth: 3,
-
-                        tension: 0.3,
-
-                        pointRadius: 4,
-
-                        pointHoverRadius: 6,
-
-                        fill: false
-
-                    }
-
-                ]
-
+                datasets: [{
+                    label: "Jumlah Artikel",
+                    data: values,
+                    borderWidth: 3,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: false
+                }]
             },
-
             options: {
-
                 responsive: true,
-
                 maintainAspectRatio: false,
-
                 plugins: {
-
                     legend: {
-
                         display: true
-
                     }
-
                 },
-
                 scales: {
-
                     y: {
-
                         beginAtZero: true,
-
                         ticks: {
-
                             precision: 0
-
                         }
-
                     }
-
                 }
-
             }
-
         });
-
+    } catch (error) {
+        console.error("Trend error:", error);
     }
-
-    catch (error) {
-
-        console.error(
-            "Trend error:",
-            error
-        );
-
-    }
-
 }
 
 

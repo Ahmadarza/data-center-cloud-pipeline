@@ -1,60 +1,66 @@
-# Data Center & Cloud Pipeline
-
-Data pipeline dan Business Intelligence dashboard untuk mengolah dan menganalisis data berita terkait sektor **Data Center & Cloud di Indonesia**.
+# Data Center & Cloud
 
 ## Project Overview
 
-Project ini bertujuan untuk mengumpulkan data berita dari beberapa sumber publik, melakukan pengolahan dan ekstraksi business insight, menyimpan data ke PostgreSQL, serta menyajikan hasil analisis melalui dashboard.
+Data Center & Cloud Pipeline merupakan pipeline pengumpulan dan pengolahan berita terkait sektor Data Center & Cloud dari berbagai sumber berita online. Pipeline ini digunakan untuk menghasilkan business insight yang ditampilkan melalui dashboard untuk mendukung analisis bisnis dan pemasaran.
 
-Pipeline yang digunakan terdiri dari beberapa tahap:
+Pipeline menggunakan Apache Airflow untuk mengatur jadwal dan menjalankan proses otomatis, Python untuk web scraping dan pengolahan data, CSV sebagai staging area, PostgreSQL sebagai database utama, serta Flask sebagai backend dashboard.
 
-**Web Scraping → Cleaning & Filtering → Business Insight → CSV Staging → PostgreSQL → Flask → Dashboard**
+**Alur pipeline:**
 
-Selain itu, dashboard dilengkapi dengan fitur **AI Executive Summary** menggunakan Google Gemini API.
+Apache Airflow → Web Scraping → Cleaning & Filtering → Business Insight Extraction → CSV Staging → PostgreSQL → Flask Dashboard → Business Intelligence Output
 
----
+## 1. Apache Airflow
 
-## 1. Data Sources
+Apache Airflow digunakan untuk mengorkestrasi dan mengotomatisasi proses pipeline secara terjadwal.
 
-Data dikumpulkan dari beberapa sumber berita publik:
+Fungsi utama:
+- Menjalankan pipeline secara otomatis menggunakan jadwal mingguan (`@weekly`).
+- Mengatur urutan eksekusi setiap task.
+- Memantau status dan hasil eksekusi pipeline.
+- Mengelola proses scraping, pengolahan data, dan penyimpanan data.
 
-- ANTARA
+DAG yang digunakan: `data_center_pipeline`.
+
+## 2. Data Sources
+
+Pipeline mengumpulkan berita dari beberapa sumber online yang membahas sektor Data Center & Cloud.
+
+Sumber data:
+- ANTARA News
 - Katadata
-- Kompas
+- KOMPAS
 
-Fokus data adalah berita yang berkaitan dengan sektor **Data Center & Cloud di Indonesia**.
+Data yang dikumpulkan mencakup informasi terkait infrastruktur data center, investasi, energi, perusahaan, regulasi, dan perkembangan teknologi cloud.
 
----
+## 3. Web Scraping
 
-## 2. Web Scraping
+Web scraping digunakan untuk mengambil informasi berita dari setiap sumber secara otomatis menggunakan Python.
 
-Proses pengumpulan data dilakukan menggunakan beberapa library Python:
+Teknologi yang digunakan:
+- **Requests** untuk mengirim HTTP request.
+- **BeautifulSoup** untuk parsing dan ekstraksi elemen HTML.
+- **Selenium** untuk menangani halaman dinamis dan navigasi pagination.
 
-- **Selenium** → digunakan untuk halaman yang membutuhkan interaksi browser atau pemuatan data secara dinamis.
-- **BeautifulSoup** → digunakan untuk membaca dan memproses struktur HTML.
-- **Requests** → digunakan untuk melakukan HTTP request pada halaman yang dapat diakses secara langsung.
+Data yang dikumpulkan meliputi judul berita, tanggal publikasi, tautan artikel, gambar, dan isi artikel.
 
----
+## 4. Data Processing
 
-## 3. Data Processing
+### 4.1 Cleaning & Filtering
 
-Data hasil scraping tidak langsung digunakan untuk analisis. Data terlebih dahulu melalui beberapa tahap pengolahan.
+Tahap ini dilakukan untuk membersihkan dan menyaring data berita sebelum disimpan ke database.
 
-### 3.1 Cleaning & Filtering
+Proses meliputi:
+- Membersihkan data hasil scraping.
+- Menghapus atau menangani data duplikat.
+- Memfilter artikel berdasarkan periode 12 bulan terakhir.
+- Mengklasifikasikan relevansi artikel terhadap sektor Data Center & Cloud.
 
-Tahap ini digunakan untuk membersihkan dan menyaring data berdasarkan:
+### 4.2 Business Insight Extraction
 
-- Relevansi berita
-- Topik Data Center & Cloud
-- Periode data 12 bulan
-- Informasi yang dibutuhkan untuk analisis
+Tahap ini digunakan untuk mengekstraksi informasi penting dari artikel agar dapat dimanfaatkan untuk analisis bisnis.
 
-Tujuannya adalah mendapatkan data yang lebih relevan sebelum masuk ke tahap berikutnya.
-
-### 3.2 Business Insight Extraction
-
-Informasi penting dari artikel diekstraksi menjadi beberapa kategori:
-
+Informasi yang diekstraksi meliputi:
 - Technology
 - Investment
 - Capacity
@@ -63,151 +69,108 @@ Informasi penting dari artikel diekstraksi menjadi beberapa kategori:
 - Project Location
 - Insight Type
 
-Tahap ini bertujuan mengubah data berita menjadi informasi yang lebih terstruktur untuk kebutuhan Business Intelligence.
+Hasil ekstraksi digunakan sebagai dasar penyajian informasi dan business insight pada dashboard.
 
----
+## 5. CSV Staging
 
-## 4. CSV Staging
+CSV digunakan sebagai staging area atau tempat penyimpanan sementara sebelum data dimasukkan ke PostgreSQL.
 
-CSV digunakan sebagai **staging area** atau penyimpanan sementara sebelum data dimasukkan ke PostgreSQL.
+Fungsi CSV staging:
+- Menyimpan hasil scraping dan pengolahan sementara.
+- Memudahkan validasi dan pemeriksaan data.
+- Membantu proses debugging dan pemrosesan ulang apabila terjadi kesalahan.
+- Memisahkan proses pengolahan data dari proses penyimpanan ke database utama.
 
-CSV digunakan untuk membantu:
+CSV tidak digunakan sebagai penyimpanan historis utama. Data utama dikelola di PostgreSQL.
 
-- Validasi data
-- Pemeriksaan hasil scraping
-- Debugging
-- Reprocessing data
+## 6. PostgreSQL
 
-CSV bukan merupakan penyimpanan utama. Data utama yang digunakan oleh dashboard disimpan di PostgreSQL.
+PostgreSQL digunakan sebagai database utama untuk menyimpan data artikel yang telah melalui proses cleaning, filtering, dan business insight extraction.
 
----
+Data yang disimpan meliputi:
+- Informasi artikel dan sumber berita.
+- Tanggal publikasi dan tautan artikel.
+- Kategori relevansi dan topik.
+- Informasi teknologi dan investasi.
+- Kapasitas, perusahaan, organisasi, dan lokasi proyek.
+- Informasi pendukung dashboard.
 
-## 5. PostgreSQL
+Proses penyimpanan menggunakan mekanisme insert atau upsert berdasarkan URL artikel untuk membantu mencegah duplikasi data.
 
-PostgreSQL digunakan sebagai **database utama** untuk menyimpan data yang telah diproses.
+## 7. Flask Dashboard Backend
 
-Data yang disimpan mencakup informasi artikel dan business insight seperti:
+Flask digunakan sebagai backend yang menghubungkan PostgreSQL dengan dashboard.
 
-- Title
-- Published Date
-- Summary
-- Article URL
-- Image URL
-- Source
-- Topic
-- Relevance
-- Technology
-- Investment Value
-- Investment Type
-- Capacity
-- Capacity Type
-- Company
-- Organization
-- Project Location
-- Insight Type
-- Content
+Fungsi utama:
+- Mengambil data dari PostgreSQL.
+- Menyediakan data untuk ditampilkan pada dashboard.
+- Menangani filter dan permintaan data dari pengguna.
+- Menghubungkan fitur AI Executive Summary dengan Google Gemini API.
 
-Proses load data menggunakan mekanisme **upsert berdasarkan URL artikel** untuk membantu mencegah duplikasi data.
+## 8. Dashboard
 
----
+Dashboard digunakan untuk menampilkan hasil pengolahan data berita dalam bentuk visualisasi dan informasi yang mudah dipahami.
 
-## 6. Flask Dashboard
+Fitur dashboard meliputi:
+- Menampilkan daftar artikel berita.
+- Menampilkan judul, tanggal, gambar, dan tautan artikel.
+- Memfilter data berdasarkan sumber, topik, dan teknologi.
+- Menampilkan tren dan distribusi data.
+- Menyajikan informasi terkait investasi dan business insight.
 
-Dashboard dikembangkan menggunakan **Flask**.
+## 9. AI Executive Summary
 
-Flask berfungsi sebagai backend yang menghubungkan PostgreSQL dengan tampilan dashboard.
+AI Executive Summary menggunakan Google Gemini API untuk membantu merangkum informasi dan insight dari data yang tersedia.
 
-Flask mengambil data dari PostgreSQL dan menyediakan data yang dibutuhkan oleh dashboard seperti:
+Fitur ini terintegrasi melalui Flask backend dan ditampilkan pada dashboard untuk membantu pengguna memahami perkembangan sektor Data Center & Cloud secara lebih ringkas.
 
-- Total artikel
-- Investment Signal
-- Capacity Signal
-- Technology
-- News Trends
-- Business Insights
-- Latest News
-- Filter berdasarkan source
+## 10. Business Intelligence Output
 
----
+Hasil akhir pipeline berupa informasi dan visualisasi yang dapat digunakan untuk mendukung analisis bisnis dan pemasaran.
 
-## 7. Dashboard
+Output meliputi:
+- Tren berita Data Center & Cloud.
+- Distribusi topik dan teknologi.
+- Informasi investasi dan kapasitas.
+- Informasi perusahaan, organisasi, dan lokasi proyek.
+- Ringkasan insight untuk mendukung pengambilan keputusan.
 
-Dashboard digunakan untuk menyajikan hasil pengolahan data dalam bentuk **Business Intelligence**.
-
-Informasi yang ditampilkan meliputi:
-
-- Total Artikel
-- Investment Signal
-- Capacity Signal
-- Technology
-- News Trend
-- Trend Insight
-- Business Insight
-- Latest News
-- Source Filter
-- AI Executive Summary
-
-Dashboard membantu pengguna melihat perkembangan dan informasi penting terkait sektor Data Center & Cloud.
-
----
-
-## 8. AI Executive Summary
-
-Dashboard dilengkapi fitur **AI Executive Summary** menggunakan Google Gemini API.
-
-Gemini digunakan untuk menganalisis data artikel yang tersedia dan menghasilkan ringkasan bisnis.
-
-Analisis AI mencakup:
-
-1. **Ringkasan Utama**  
-   Memberikan gambaran umum mengenai informasi yang paling banyak dibahas dalam kumpulan artikel.
-
-2. **Tren yang Terlihat**  
-   Mengidentifikasi pola atau tren yang muncul berdasarkan data artikel.
-
-3. **Investment & Capacity**  
-   Menganalisis informasi terkait investasi dan kapasitas data center yang terdapat dalam data.
-
-4. **Teknologi dan Perusahaan**  
-   Mengidentifikasi teknologi, perusahaan, dan organisasi yang sering muncul dalam data.
-
-5. **Business Insight**  
-   Memberikan rangkuman insight bisnis berdasarkan informasi yang tersedia.
-
-AI diarahkan untuk menggunakan informasi yang tersedia pada data dan tidak mengarang angka atau fakta.
-
----
-
-##9. 10. Business Intelligence Output
-Hasil akhir dari pipeline adalah Business Intelligence Dashboard yang menyajikan informasi terkait sektor Data Center & Cloud.
-Dashboard digunakan untuk melihat:
-- Tren pemberitaan
-- Investment Signal
-- Capacity Signal
-- Teknologi
-- Perusahaan dan organisasi
-- Lokasi proyek
-- Berita terbaru
-- AI Executive Summary
-
-## 10. Workflow
+## 11. Workflow
 
 ```text
-Data Source
-ANTARA | Katadata | Kompas
-        ↓
-Web Scraping
-        ↓
-Cleaning & Filtering
-        ↓
+Apache Airflow (@weekly)
+          |
+          v
+     Data Sources
+ ANTARA | Katadata | KOMPAS
+          |
+          v
+     Web Scraping
+          |
+          v
+ Cleaning & Filtering
+          |
+          v
 Business Insight Extraction
-        ↓
-CSV Staging
-        ↓
-PostgreSQL
-        ↓
-Flask
-        ↓
-Dashboard
-        ↓
+          |
+          v
+     CSV Staging
+          |
+          v
+      PostgreSQL
+          |
+          v
+Flask Dashboard Backend
+          |
+          v
+       Dashboard
+          |
+          v
 Business Intelligence Output
+```
+
+**Catatan:**
+- Apache Airflow mengatur jadwal dan eksekusi pipeline.
+- CSV berfungsi sebagai penyimpanan sementara (*staging area*).
+- PostgreSQL berfungsi sebagai database utama.
+- Flask menghubungkan database, dashboard, dan layanan AI Executive Summary.

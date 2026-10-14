@@ -1077,17 +1077,15 @@ def insights():
 
 
 # ==========================================
-# WEEKLY NEWS TREND
+# MONTHLY NEWS TREND
 # ==========================================
 
 @app.route("/api/trends")
 def trends():
-
     conn = get_connection()
 
     try:
         with conn.cursor() as cur:
-
             where, params = build_where(
                 "published_date IS NOT NULL"
             )
@@ -1096,34 +1094,34 @@ def trends():
                 f"""
                 SELECT
                     TO_CHAR(
-                        DATE_TRUNC('week', published_date),
-                        'YYYY-MM-DD'
-                    ) AS week,
+                        DATE_TRUNC('month', published_date),
+                        'YYYY-MM'
+                    ) AS month,
                     COUNT(*) AS total
                 FROM data_center_news
                 {where}
                 GROUP BY DATE_TRUNC(
-                    'week',
+                    'month',
                     published_date
                 )
-                ORDER BY week;
+                ORDER BY month;
                 """,
                 params
             )
 
             rows = cur.fetchall()
 
-        return jsonify([
-            {
-                "week": row[0],
-                "total": row[1]
-            }
-            for row in rows
-        ])
+            return jsonify([
+                {
+                    "month": row[0],
+                    "total": row[1]
+                }
+                for row in rows
+            ])
 
     finally:
         conn.close()
-
+        
 # ==========================================
 # AI EXECUTIVE SUMMARY
 # ==========================================
